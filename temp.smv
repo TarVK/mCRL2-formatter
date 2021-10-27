@@ -1,0 +1,64 @@
+MODULE main
+VAR v0: 0..5;
+    v1: 0..5;
+    v2: 0..5;
+    v3: 0..5;
+    v4: 0..5;
+    v5: 0..5;
+    v6: 0..5;
+    v7: 0..5;
+    v8: 0..5;
+    v9: 0..5;
+    v10: 0..5;
+    v11: 0..5;
+    v12: 0..5;
+    v13: 0..5;
+    v14: 0..5;
+    v15: 0..5;
+    v16: 0..5;
+    v17: 0..5;
+    v18: 0..5;
+    v19: 0..5;
+    v20: 0..5;
+    v21: 0..5;
+    v22: 0..5;
+    v23: 0..5;
+INIT v0 = 0 &
+     v1 = 3 &
+     v2 = 2 &
+     v3 = 2 &
+     v4 = 2 &
+     v5 = 4 &
+     v6 = 5 &
+     v7 = 5 &
+     v8 = 1 &
+     v9 = 0 &
+     v10 = 1 &
+     v11 = 4 &
+     v12 = 0 &
+     v13 = 5 &
+     v14 = 3 &
+     v15 = 0 &
+     v16 = 1 &
+     v17 = 1 &
+     v18 = 3 &
+     v19 = 3 &
+     v20 = 4 &
+     v21 = 2 &
+     v22 = 4 &
+     v23 = 5
+LTLSPEC
+G (v0 != 3 | v1 != 3 | v2 != 3 | v3 != 3 | v4 != 1 | v5 != 1 | v6 != 5 | v7 != 5 | v8 != 4 | v9 != 4 | v10 != 0 | v11 != 0 | v12 != 1 | v13 != 1 | v14 != 5 | v15 != 5 | v16 != 4 | v17 != 4 | v18 != 0 | v19 != 0 | v20 != 2 | v21 != 2 | v22 != 2 | v23 != 2)
+TRANS
+((next(v0) = v2) & (next(v1) = v0) & (next(v2) = v3) & (next(v3) = v1) & (next(v4) = v6) & (next(v5) = v7) & (next(v6) = v8) & (next(v7) = v9) & (next(v8) = v10) & (next(v9) = v11) & (next(v10) = v4) & (next(v11) = v5) & (next(v12) = v12) & (next(v13) = v13) & (next(v14) = v14) & (next(v15) = v15) & (next(v16) = v16) & (next(v17) = v17) & (next(v18) = v18) & (next(v19) = v19) & (next(v20) = v20) & (next(v21) = v21) & (next(v22) = v22) & (next(v23) = v23))
+ | ((v0 = next(v2)) & (v1 = next(v0)) & (v2 = next(v3)) & (v3 = next(v1)) & (v4 = next(v6)) & (v5 = next(v7)) & (v6 = next(v8)) & (v7 = next(v9)) & (v8 = next(v10)) & (v9 = next(v11)) & (v10 = next(v4)) & (v11 = next(v5)) & (next(v12) = v12) & (next(v13) = v13) & (next(v14) = v14) & (next(v15) = v15) & (next(v16) = v16) & (next(v17) = v17) & (next(v18) = v18) & (next(v19) = v19) & (next(v20) = v20) & (next(v21) = v21) & (next(v22) = v22) & (next(v23) = v23))
+ | ((next(v0) = v0) & (next(v1) = v1) & (next(v2) = v2) & (next(v3) = v3) & (next(v4) = v4) & (next(v5) = v5) & (next(v6) = v6) & (next(v7) = v7) & (next(v8) = v8) & (next(v9) = v9) & (next(v10) = v10) & (next(v11) = v11) & (next(v12) = v18) & (next(v13) = v19) & (next(v14) = v12) & (next(v15) = v13) & (next(v16) = v14) & (next(v17) = v15) & (next(v18) = v16) & (next(v19) = v17) & (next(v20) = v22) & (next(v21) = v20) & (next(v22) = v23) & (next(v23) = v21))
+ | ((next(v0) = v0) & (next(v1) = v1) & (next(v2) = v2) & (next(v3) = v3) & (next(v4) = v4) & (next(v5) = v5) & (next(v6) = v6) & (next(v7) = v7) & (next(v8) = v8) & (next(v9) = v9) & (next(v10) = v10) & (next(v11) = v11) & (v12 = next(v18)) & (v13 = next(v19)) & (v14 = next(v12)) & (v15 = next(v13)) & (v16 = next(v14)) & (v17 = next(v15)) & (v18 = next(v16)) & (v19 = next(v17)) & (v20 = next(v22)) & (v21 = next(v20)) & (v22 = next(v23)) & (v23 = next(v21)))
+ | ((next(v0) = v19) & (next(v1) = v1) & (next(v2) = v11) & (next(v3) = v3) & (next(v4) = v12) & (next(v5) = v4) & (next(v6) = v0) & (next(v7) = v7) & (next(v8) = v8) & (next(v9) = v9) & (next(v10) = v10) & (next(v11) = v22) & (next(v12) = v13) & (next(v13) = v5) & (next(v14) = v2) & (next(v15) = v15) & (next(v16) = v16) & (next(v17) = v17) & (next(v18) = v18) & (next(v19) = v20) & (next(v20) = v6) & (next(v21) = v21) & (next(v22) = v14) & (next(v23) = v23))
+ | ((v0 = next(v19)) & (next(v1) = v1) & (v2 = next(v11)) & (next(v3) = v3) & (v4 = next(v12)) & (v5 = next(v4)) & (v6 = next(v0)) & (next(v7) = v7) & (next(v8) = v8) & (next(v9) = v9) & (next(v10) = v10) & (v11 = next(v22)) & (v12 = next(v13)) & (v13 = next(v5)) & (v14 = next(v2)) & (next(v15) = v15) & (next(v16) = v16) & (next(v17) = v17) & (next(v18) = v18) & (v19 = next(v20)) & (v20 = next(v6)) & (next(v21) = v21) & (v22 = next(v14)) & (next(v23) = v23))
+ | ((next(v0) = v0) & (next(v1) = v1) & (next(v2) = v13) & (next(v3) = v5) & (next(v4) = v4) & (next(v5) = v20) & (next(v6) = v14) & (next(v7) = v6) & (next(v8) = v2) & (next(v9) = v9) & (next(v10) = v10) & (next(v11) = v11) & (next(v12) = v12) & (next(v13) = v21) & (next(v14) = v15) & (next(v15) = v7) & (next(v16) = v3) & (next(v17) = v17) & (next(v18) = v18) & (next(v19) = v19) & (next(v20) = v16) & (next(v21) = v8) & (next(v22) = v22) & (next(v23) = v23))
+ | ((next(v0) = v0) & (next(v1) = v1) & (v2 = next(v13)) & (v3 = next(v5)) & (next(v4) = v4) & (v5 = next(v20)) & (v6 = next(v14)) & (v7 = next(v6)) & (v8 = next(v2)) & (next(v9) = v9) & (next(v10) = v10) & (next(v11) = v11) & (next(v12) = v12) & (v13 = next(v21)) & (v14 = next(v15)) & (v15 = next(v7)) & (v16 = next(v3)) & (next(v17) = v17) & (next(v18) = v18) & (next(v19) = v19) & (v20 = next(v16)) & (v21 = next(v8)) & (next(v22) = v22) & (next(v23) = v23))
+ | ((next(v0) = v0) & (next(v1) = v7) & (next(v2) = v2) & (next(v3) = v15) & (next(v4) = v4) & (next(v5) = v5) & (next(v6) = v6) & (next(v7) = v21) & (next(v8) = v16) & (next(v9) = v8) & (next(v10) = v3) & (next(v11) = v11) & (next(v12) = v12) & (next(v13) = v13) & (next(v14) = v14) & (next(v15) = v23) & (next(v16) = v17) & (next(v17) = v9) & (next(v18) = v1) & (next(v19) = v19) & (next(v20) = v20) & (next(v21) = v18) & (next(v22) = v22) & (next(v23) = v10))
+ | ((next(v0) = v0) & (v1 = next(v7)) & (next(v2) = v2) & (v3 = next(v15)) & (next(v4) = v4) & (next(v5) = v5) & (next(v6) = v6) & (v7 = next(v21)) & (v8 = next(v16)) & (v9 = next(v8)) & (v10 = next(v3)) & (next(v11) = v11) & (next(v12) = v12) & (next(v13) = v13) & (next(v14) = v14) & (v15 = next(v23)) & (v16 = next(v17)) & (v17 = next(v9)) & (v18 = next(v1)) & (next(v19) = v19) & (next(v20) = v20) & (v21 = next(v18)) & (next(v22) = v22) & (v23 = next(v10)))
+ | ((next(v0) = v9) & (next(v1) = v17) & (next(v2) = v2) & (next(v3) = v3) & (next(v4) = v1) & (next(v5) = v5) & (next(v6) = v6) & (next(v7) = v7) & (next(v8) = v8) & (next(v9) = v23) & (next(v10) = v18) & (next(v11) = v10) & (next(v12) = v0) & (next(v13) = v13) & (next(v14) = v14) & (next(v15) = v15) & (next(v16) = v16) & (next(v17) = v22) & (next(v18) = v19) & (next(v19) = v11) & (next(v20) = v20) & (next(v21) = v21) & (next(v22) = v4) & (next(v23) = v12))
+ | ((v0 = next(v9)) & (v1 = next(v17)) & (next(v2) = v2) & (next(v3) = v3) & (v4 = next(v1)) & (next(v5) = v5) & (next(v6) = v6) & (next(v7) = v7) & (next(v8) = v8) & (v9 = next(v23)) & (v10 = next(v18)) & (v11 = next(v10)) & (v12 = next(v0)) & (next(v13) = v13) & (next(v14) = v14) & (next(v15) = v15) & (next(v16) = v16) & (v17 = next(v22)) & (v18 = next(v19)) & (v19 = next(v11)) & (next(v20) = v20) & (next(v21) = v21) & (v22 = next(v4)) & (v23 = next(v12)))
