@@ -12,12 +12,8 @@ export const createOpParser = <B = unknown>(): IOpParser<B, never> => createPars
 const createParser = <B, R extends B>(rules: IOp<B, B>[]): IOpParser<B, R> => ({
     a: rule => createParser([...rules, rule]),
     finish: () => {
-        const p = (rule: IOp<B, B>): number =>
-            rule.p == -1 ? Infinity : rule.p ?? Infinity;
-        const augment = <T>(
-            node: T,
-            {p, t, ass}: {p?: number; t: string; ass?: "left" | "right"}
-        ) => ({
+        const p = (rule: IOp<B, B>): number => (rule.p == -1 ? Infinity : rule.p ?? Infinity);
+        const augment = <T>(node: T, {p, t, ass}: {p?: number; t: string; ass?: "left" | "right"}) => ({
             ...node,
             ...(p != undefined && {precedence: p}),
             ...(t == "i" && {associativity: ass ?? "left"}),
@@ -32,17 +28,9 @@ const createParser = <B, R extends B>(rules: IOp<B, B>[]): IOpParser<B, R> => ({
                 for (let i = 0; i < grouped.length; i++) {
                     const group = grouped[i];
                     if (group.precedence == precedence)
-                        return [
-                            ...grouped.slice(0, i),
-                            {precedence, items: [...group.items, rule]},
-                            ...grouped.slice(i + 1),
-                        ];
+                        return [...grouped.slice(0, i), {precedence, items: [...group.items, rule]}, ...grouped.slice(i + 1)];
                     if (group.precedence < precedence)
-                        return [
-                            ...grouped.slice(0, i),
-                            {precedence, items: [rule]},
-                            ...grouped.slice(i),
-                        ];
+                        return [...grouped.slice(0, i), {precedence, items: [rule]}, ...grouped.slice(i)];
                 }
                 return [...grouped, {precedence, items: [rule]}];
             }, [] as {precedence: number; items: IOp<B, B>[]}[])
@@ -72,57 +60,72 @@ const createParser = <B, R extends B>(rules: IOp<B, B>[]): IOpParser<B, R> => ({
             };
         });
 
-        const parser: Parser<B> = typeGrouped.reduce<Parser<B>>(
-            (nextParser, {prefix, suffix, leftInfix, rightInfix, base}, i) => {
+        const parser: Parser<B> = precedenceGrouped.reduce<Parser<B>>(
+            (nextParser, rules, i) => {
+                // Base rule parser (both prefix and base ops)
+                const baseRules = rules
+                    .filter((op): op is IBaseOp<any> | IPrefixOp<any, any> => op.t == "b" || op.t == "p")
+                    .map(({op, ...data}) =>
+                        data.t == "b"
+                            ? op.map(out => augment(out, data))
+                            : P.seq(
+                                  op,
+                                  P.lazy(() => baseParser)
+                              ).map(([combiner, expr]) => augment(combiner(expr), data))
+                    );
                 const baseParser: Parser<B> =
-                    base.length > 0 || prefix.length > 0
-                        ? P.lazy(() =>
-                              P.alt(
-                                  ...base,
-                                  ...prefix.map(parser =>
-                                      P.seq(parser, baseParser).map(([combiner, expr]) =>
-                                          combiner(expr)
-                                      )
-                                  ),
-                                  ...(i == 0 ? [] : [nextParser])
-                              )
-                          )
+                    baseRules.length > 0
+                        ? P.alt(...baseRules, ...(i == 0 ? [] : [nextParser]))
                         : i == 0
                         ? P.fail("Parser should have a base case")
                         : nextParser;
 
+                // Right recursive infix ops parser
+                const rightInfixRules = rules
+                    .filter((op): op is IInfixOp<any, any> => op.t == "i" && op.ass == "right")
+                    .map(({op, ...data}) =>
+                        op.map(
+                            out =>
+                                (...args: [any, any]) =>
+                                    augment(out(...args), data)
+                        )
+                    );
                 const rightRecursiveParser: Parser<B> =
-                    rightInfix.length > 0
+                    rightInfixRules.length > 0
                         ? P.lazy(() =>
                               baseParser.chain(leftValue =>
-                                  P.seq(P.alt(...rightInfix), rightRecursiveParser)
-                                      .map(([combiner, rightValue]) =>
-                                          combiner(leftValue, rightValue)
-                                      )
+                                  P.seq(P.alt(...rightInfixRules), rightRecursiveParser)
+                                      .map(([combiner, rightValue]) => combiner(leftValue, rightValue))
                                       .or(P.of(leftValue))
                               )
                           )
                         : baseParser;
+
+                // Left recursive infix ops and suffix ops parser
+                const leftRecursiveRules = rules
+                    .filter(
+                        (op): op is IInfixOp<any, any> | ISuffixOp<any, any> => (op.t == "i" && op.ass != "right") || op.t == "s"
+                    )
+                    .map(({op, ...data}) =>
+                        data.t == "i"
+                            ? P.seq(
+                                  op.map(
+                                      out =>
+                                          (...args: [any, any]) =>
+                                              augment(out(...args), data)
+                                  ),
+                                  rightRecursiveParser
+                              )
+                            : op.map(out => [(...args: [any, any]) => augment(out(...args), data)] as const)
+                    );
                 const leftRecursiveParser =
-                    leftInfix.length > 0 || suffix.length > 0
+                    leftRecursiveRules.length > 0
                         ? P.seq(
                               rightRecursiveParser,
-                              P.alt<
-                                  | [(left: B, right: B) => R, B]
-                                  | readonly [(left: B) => R]
-                              >(
-                                  ...leftInfix.map(op => P.seq(op, rightRecursiveParser)),
-                                  ...suffix.map(op =>
-                                      op.map(combiner => [combiner] as const)
-                                  )
+                              P.alt<[(left: B, right: B) => R, B] | readonly [(left: B, right: B) => R]>(
+                                  ...leftRecursiveRules
                               ).many()
-                          ).map(([first, rest]) =>
-                              rest.reduce(
-                                  (formula, [combiner, nextValue]) =>
-                                      combiner(formula, nextValue!),
-                                  first
-                              )
-                          )
+                          ).map(([first, rest]) => rest.reduce((left, [combiner, right]) => combiner(left, right!), first))
                         : rightRecursiveParser;
 
                 return leftRecursiveParser;
