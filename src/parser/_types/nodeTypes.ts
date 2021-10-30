@@ -20,13 +20,13 @@ export type IFSetSortNode = INode<"s_fSet", {of: ISortExpr}>;
 export type IFBagSortNode = INode<"s_fBag", {of: ISortExpr}>;
 export type ISortGroupNode = INode<"s_group", {expr: ISortExpr}>;
 
-export type IProjNode = INode<"s_proj", {name?: string; type: ISortExpr}>;
+export type IProjNode = INode<"s_proj", {name?: string; sort: ISortExpr}>;
 export type IConstrNode = INode<"s_constr", {name: string; args: IProjNode[]; testFunc?: string}>;
 export type IStructSortNode = INode<"s_struct", {constructors: IConstrNode[]}>;
 export type ISortNameNode = INode<"s_name", {name: string}>;
 
 export type IFuncSortNode = INode<"s_func", {from: ISortExpr; to: ISortExpr}>;
-export type IProdSortNode = INode<"s_prod", {typeA: ISortExpr; typeB: ISortExpr}>;
+export type IProdSortNode = INode<"s_prod", {sortA: ISortExpr; sortB: ISortExpr}>;
 
 export type ISortExpr =
     | IBoolSortNode
@@ -65,7 +65,7 @@ export type ILambdaNode = INode<"d_lambda", {vars: IVarDecl[]; expr: IDataExpr}>
 export type IBinaryOpNode = INode<
     "d_binOp",
     {
-        type:
+        kind:
             | "=>"
             | "||"
             | "&&"
@@ -128,7 +128,7 @@ export type IFrmForallNode = INode<"f_forall", {vars: IVarDecl[]; expr: IActFrm}
 export type IFrmExistsNode = INode<"f_exists", {vars: IVarDecl[]; expr: IActFrm}>;
 export type IFrmBoolNode = INode<"f_bool", {val: boolean}>;
 export type IFGroup = INode<"f_group", {expr: IActFrm}>;
-export type IFrmBinaryOpNode = INode<"f_binOp", {type: "=>" | "||" | "&&"; exprA: IActFrm; exprB: IActFrm}>;
+export type IFrmBinaryOpNode = INode<"f_binOp", {kind: "=>" | "||" | "&&"; exprA: IActFrm; exprB: IActFrm}>;
 export type ITimeNode = INode<"f_time", {expr: IActFrm; time: IDataExpr}>;
 export type IFrmNegateNode = INode<"f_negate", {expr: IActFrm}>;
 export type IActFrm =
@@ -161,7 +161,7 @@ export type IMuNode = INode<"sf_mu", {name: string; vars: IStateVarDecl[]; expr:
 export type INuNode = INode<"sf_nu", {name: string; vars: IStateVarDecl[]; expr: IStateFrm}>;
 export type IStateFrmForallNode = INode<"sf_forall", {vars: IVarDecl[]; expr: IStateFrm}>;
 export type IStateFrmExistsNode = INode<"sf_exists", {vars: IVarDecl[]; expr: IStateFrm}>;
-export type IStateFrmBinaryOpNode = INode<"sf_binOp", {type: "=>" | "||" | "&&"; exprA: IStateFrm; exprB: IStateFrm}>;
+export type IStateFrmBinaryOpNode = INode<"sf_binOp", {kind: "=>" | "||" | "&&"; exprA: IStateFrm; exprB: IStateFrm}>;
 export type IStateFrmForallPathsNode = INode<"sf_forallPaths", {path: IRegFrm; expr: IStateFrm}>;
 export type IStateFrmExistPathNode = INode<"sf_existsPath", {path: IRegFrm; expr: IStateFrm}>;
 export type IStateFrmNegateNode = INode<"sf_negate", {expr: IStateFrm}>;
@@ -180,3 +180,6 @@ export type IStateFrm =
     | IStateFrmForallPathsNode
     | IStateFrmExistPathNode
     | IStateFrmNegateNode;
+
+// Collect all nodes
+export type IAllNodes = IStateFrm | IFrmOptNode | IFrmForallNode | IDataExpr | ISortExpr;

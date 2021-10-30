@@ -35,7 +35,7 @@ const numberParser = P.regexp(/0|([1-9][0-9]*)/).map(num => N("number", {value: 
 
 // Sorts
 const projDeclParser = P.lazy(() =>
-    P.seq(Opt(P.seq(idParser, S(":"))), sortExprParser).map(([name, sort]) => N("s_proj", {name: name?.[0].name, type: sort}))
+    P.seq(Opt(P.seq(idParser, S(":"))), sortExprParser).map(([name, sort]) => N("s_proj", {name: name?.[0].name, sort}))
 );
 const constDeclParser = P.seq(idParser, Opt(P.seq(S("("), listParser(projDeclParser), S(")"))), Opt(P.seq(S("?"), idParser))).map(
     ([{name}, args, testFunc]) => N("s_constr", {name, args: args?.[1] ?? [], testFunc: testFunc?.[1].name})
@@ -74,7 +74,7 @@ export const sortExprParser: Parser<ISortExpr> = P.lazy(() =>
             t: "i",
             p: 1,
             ass: "left",
-            op: S("#").map(() => (typeA, typeB) => N("s_prod", {typeA, typeB})),
+            op: S("#").map(() => (sortA, sortB) => N("s_prod", {sortA, sortB})),
         })
         .finish()
 );
@@ -99,8 +99,8 @@ const assignmentListParser: Parser<IAssignmentNode[]> = listParser(
     P.lazy(() => P.seq(idParser, S("="), dataExprParser).map(([id, , expr]) => N("d_assign", {name: id.name, value: expr})))
 );
 
-const binDataOp = <N extends string>(type: N) =>
-    S(type).map(() => (exprA: IDataExpr, exprB: IDataExpr) => N("d_binOp", {type, exprA, exprB}));
+const binDataOp = <N extends string>(kind: N) =>
+    S(kind).map(() => (exprA: IDataExpr, exprB: IDataExpr) => N("d_binOp", {kind, exprA, exprB}));
 export const dataExprParser: Parser<IDataExpr> = P.lazy(() =>
     createOpParser<IDataExpr>()
         .a({t: "b", op: numberParser})
@@ -201,8 +201,8 @@ export const multiActParser: Parser<IMultAct> = S("tau")
 
 // Action formulas
 
-const binFrmOp = <N extends string>(type: N) =>
-    S(type).map(() => (exprA: IActFrm, exprB: IActFrm) => N("f_binOp", {type, exprA, exprB}));
+const binFrmOp = <N extends string>(kind: N) =>
+    S(kind).map(() => (exprA: IActFrm, exprB: IActFrm) => N("f_binOp", {kind, exprA, exprB}));
 export const actFrmParser: Parser<IActFrm> = P.lazy(() =>
     createOpParser<IActFrm>()
         .a({t: "b", p: 30, op: multiActParser})
@@ -263,8 +263,8 @@ const stateDeclParser: Parser<IStateVarDecl[]> = listParser(
     )
 );
 
-const binStateFrmOp = <N extends string>(type: N) =>
-    S(type).map(() => (exprA: IStateFrm, exprB: IStateFrm) => N("sf_binOp", {type, exprA, exprB}));
+const binStateFrmOp = <N extends string>(kind: N) =>
+    S(kind).map(() => (exprA: IStateFrm, exprB: IStateFrm) => N("sf_binOp", {kind, exprA, exprB}));
 export const stateFrmParser: Parser<IStateFrm> = P.lazy(() =>
     createOpParser<IStateFrm>()
         .a({t: "b", p: 50, op: P.seq(S("val"), S("("), dataExprParser, S(")")).map(([, , expr]) => expr)})
