@@ -18,7 +18,7 @@ export type IInfixOp<R, O> = {
     /** The type of the operator, infix */
     t: "i";
     /** Whether the operator is left or right associative */
-    ass?: "left" | "right";
+    ass: "left" | "right";
     /**
      * The parser of the operator,
      * which specifies how to get an output value given a left and right expression
@@ -51,7 +51,7 @@ export type IBaseOp<O> = {
      */
     op: Parser<O>;
     /** The precedence of the operator */
-    p?: number;
+    p: number;
 };
 
 /** A operator parser spec */

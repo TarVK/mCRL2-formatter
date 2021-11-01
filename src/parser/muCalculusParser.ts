@@ -1,346 +1,189 @@
-import P, {Parser} from "parsimmon";
+import P from "parsimmon";
+import {IAnyNode} from "./_types/INode";
+import {Base, Inf, ListNode, Node, Opt, Pref, Rec, Suf, Text} from "./nodeParserTools";
 import {createOpParser} from "./createOpParser";
-import {
-    IActFrm,
-    IActionNode,
-    IAssignmentNode,
-    IDataExpr,
-    IMultAct,
-    INode,
-    IRegFrm,
-    ISortExpr,
-    IStateFrm,
-    IStateVarDecl,
-    IVarDecl,
-} from "./_types/nodeTypes";
+import {TGetTypeOfParser} from "./_types/TGetTypeOfParser";
+import {TGetDescendantNodes} from "./_types/TGetDescendantNodes";
 
 // Lang spec: https://github.com/mCRL2org/mCRL2/blob/master/libraries/core/source/mcrl2_syntax.g
 
-// Helper functions
-function N<N extends string>(type: N): INode<N, {}>;
-function N<N extends string, D = {}>(type: N, data: D): INode<N, D>;
-function N<N extends string, D = {}>(type: N, data: D = {} as any): INode<N, D> {
-    return {type, ...data};
-}
+// Base parsers
+const idParser = Node("id", Text(/[A-Za-z_][A-Za-z_0-9']*/));
+const numberParser = Node("number", Text(/0|([1-9][0-9]*)/));
 
-const S = <S extends string>(s: S) => P.string(s).trim(P.optWhitespace);
-function listParser<T>(parser: Parser<T>, sep: Parser<any> = S(",")): Parser<T[]> {
-    return P.seq(parser, P.seq(sep, parser).many()).map(([first, rest]) => [first, ...rest.map(([sep, exp]) => exp)]);
-}
-const Opt = <T>(parser: Parser<T>) => parser.or(P.of(null));
-
-// Literals
-const idParser = P.regexp(/[A-Za-z_][A-Za-z_0-9']*/).map(name => N("id", {name}));
-const numberParser = P.regexp(/0|([1-9][0-9]*)/).map(num => N("number", {value: Number(num)}));
-
-// Sorts
-const projDeclParser = P.lazy(() =>
-    P.seq(Opt(P.seq(idParser, S(":"))), sortExprParser).map(([name, sort]) => N("s_proj", {name: name?.[0].name, sort}))
-);
-const constDeclParser = P.seq(idParser, Opt(P.seq(S("("), listParser(projDeclParser), S(")"))), Opt(P.seq(S("?"), idParser))).map(
-    ([{name}, args, testFunc]) => N("s_constr", {name, args: args?.[1] ?? [], testFunc: testFunc?.[1].name})
-);
-
-const parameterizedSort = <N extends string, I extends string>(name: N, id: I) =>
-    P.seq(P.string(name), S("("), sortExprParser, S(")")).map(([pr, l, of, r]) => N(id, {of}));
-export const sortExprParser: Parser<ISortExpr> = P.lazy(() =>
-    createOpParser<ISortExpr>()
-        .a({t: "b", op: S("Bool").map(() => N("s_bool"))})
-        .a({t: "b", op: S("Pos").map(() => N("s_pos"))})
-        .a({t: "b", op: S("Nat").map(() => N("s_nat"))})
-        .a({t: "b", op: S("Int").map(() => N("s_int"))})
-        .a({t: "b", op: S("Real").map(() => N("s_real"))})
-        .a({t: "b", op: parameterizedSort("List", "s_list")})
-        .a({t: "b", op: parameterizedSort("Set", "s_set")})
-        .a({t: "b", op: parameterizedSort("Bag", "s_bag")})
-        .a({t: "b", op: parameterizedSort("FSet", "s_fSet")})
-        .a({t: "b", op: parameterizedSort("FBag", "s_fBag")})
-        .a({t: "b", op: idParser.map(({name}) => N("s_name", {name}))})
-        .a({
-            t: "b",
-            op: P.seq(S("("), sortExprParser, S(")")).map(([, expr]) => N("s_group", {expr})),
-        })
-        .a({
-            t: "b",
-            op: P.seq(S("struct"), listParser(constDeclParser, S("|"))).map(([, constructors]) => N("s_struct", {constructors})),
-        })
-        .a({
-            t: "i",
-            p: 0,
-            ass: "right",
-            op: S("->").map(() => (from, to) => N("s_func", {from, to})),
-        })
-        .a({
-            t: "i",
-            p: 1,
-            ass: "left",
-            op: S("#").map(() => (sortA, sortB) => N("s_prod", {sortA, sortB})),
-        })
+// Sort parser
+export const sortExprParser = P.lazy(() =>
+    createOpParser<IAnyNode>("sortExpr")
+        .a(Base({op: Node("s:bool", Text("Bool"))}))
+        .a(Base({op: Node("s:pos", Text("Pos"))}))
+        .a(Base({op: Node("s:nat", Text("Nat"))}))
+        .a(Base({op: Node("s:int", Text("Int"))}))
+        .a(Base({op: Node("s:real", Text("Real"))}))
+        .a(Base({op: Node("s:list", Text("List"), Text("("), sortExprRecParser, Text(")"))}))
+        .a(Base({op: Node("s:set", Text("Set"), Text("("), sortExprRecParser, Text(")"))}))
+        .a(Base({op: Node("s:bag", Text("Bag"), Text("("), sortExprRecParser, Text(")"))}))
+        .a(Base({op: Node("s:fSet", Text("FSet"), Text("("), sortExprRecParser, Text(")"))}))
+        .a(Base({op: Node("s:fBag", Text("FBag"), Text("("), sortExprRecParser, Text(")"))}))
+        .a(Base({op: idParser}))
+        .a(Base({op: Node("s:group", Text("("), sortExprRecParser, Text(")"))}))
+        .a(Base({op: Node("s:constr", Text("struct"), constrDeclListParser)}))
+        .a(Inf({p: 0, ass: "right", op: Node("s:func", Text("->"))}))
+        .a(Inf({p: 1, ass: "right", op: Node("s:prod", Text("#"))}))
         .finish()
 );
+const sortExprRecParser = Rec(sortExprParser);
+const projDeclParser = Node("s:projDecl", Opt(idParser, Text(":")), sortExprRecParser);
+const projDeclListParser = ListNode("s:projDeclList", projDeclParser);
+const constrDeclParser = Node("s:constrDecl", idParser, Opt(Text("("), projDeclListParser, Text(")")), Opt(Text("?"), idParser));
+const constrDeclListParser = ListNode("s:constrDeclList", constrDeclParser, Text("|"));
 
-// Data
-const varDeclr: Parser<IVarDecl> = P.seq(idParser, S(":"), sortExprParser).map(([id, sep, sort]) =>
-    N("d_varsDecl", {
-        name: id.name,
-        sort,
-    })
-);
-const dataExprListParser: Parser<IDataExpr[]> = P.lazy(() => listParser(dataExprParser));
-const bagEnumEltListParser: Parser<{element: IDataExpr; count: IDataExpr}[]> = P.lazy(() =>
-    listParser(
-        P.seq(dataExprParser, S(":"), dataExprParser).map(([item, sep, count]) => ({
-            element: item,
-            count,
-        }))
-    )
-);
-const assignmentListParser: Parser<IAssignmentNode[]> = listParser(
-    P.lazy(() => P.seq(idParser, S("="), dataExprParser).map(([id, , expr]) => N("d_assign", {name: id.name, value: expr})))
-);
+export type ISortExprNodes = TGetTypeOfParser<
+    | typeof sortExprParser
+    | typeof projDeclParser
+    | typeof projDeclListParser
+    | typeof constrDeclParser
+    | typeof constrDeclListParser
+>;
 
-const binDataOp = <N extends string>(kind: N) =>
-    S(kind).map(() => (exprA: IDataExpr, exprB: IDataExpr) => N("d_binOp", {kind, exprA, exprB}));
-export const dataExprParser: Parser<IDataExpr> = P.lazy(() =>
-    createOpParser<IDataExpr>()
-        .a({t: "b", op: numberParser})
-        .a({t: "b", p: 19, op: idParser})
-        .a({t: "b", p: 20, op: S("true").map(() => N("d_bool", {val: true}))})
-        .a({t: "b", p: 20, op: S("false").map(() => N("d_bool", {val: false}))})
-        .a({t: "b", p: 20, op: S("[]").map(() => N("d_list", {elements: []}))})
-        .a({t: "b", p: 20, op: S("{}").map(() => N("d_set", {elements: []}))})
-        .a({t: "b", p: 20, op: S("{:}").map(() => N("d_bag", {elements: []}))})
-        .a({t: "b", p: 20, op: S("{").map(() => N("d_bag", {elements: []}))})
-        .a({
-            t: "b",
-            p: 20,
-            op: P.seq(S("["), dataExprListParser, S("]")).map(([l, elements, r]) => N("d_list", {elements})),
-        })
-        .a({
-            t: "b",
-            p: 20,
-            op: P.seq(S("{"), bagEnumEltListParser, S("}")).map(([l, elements, r]) => N("d_bag", {elements})),
-        })
-        .a({
-            t: "b",
-            p: 20,
-            op: P.seq(S("{"), varDeclr, S("|"), dataExprParser).map(([l, variable, r, expr]) =>
-                N("d_setCompr", {variable, expr})
-            ),
-        })
-        .a({
-            t: "b",
-            p: 20,
-            op: P.seq(S("{"), dataExprListParser, S("}")).map(([l, elements, r]) => N("d_set", {elements})),
-        })
-        .a({
-            t: "b",
-            p: 50,
-            op: P.seq(S("("), dataExprParser, S(")")).map(([l, data, r]) => N("d_group", {expr: data})),
-        })
-        .a({
-            t: "s",
-            p: 13,
-            op: P.seq(S("["), dataExprParser, S("->"), dataExprParser, S("]")).map(
-                ([, from, , to]) =>
-                    func =>
-                        N("d_map", {func, from, to})
-            ),
-        })
-        .a({
-            t: "s",
-            p: 13,
-            op: P.seq(S("("), dataExprListParser, S(")")).map(
-                ([, args]) =>
-                    func =>
-                        N("d_apply", {func, arguments: args})
-            ),
-        })
-        .a({t: "p", p: 12, op: S("!").map(() => expr => N("d_negate", {expr}))})
-        .a({t: "p", p: 12, op: S("-").map(() => expr => N("d_negative", {expr}))})
-        .a({t: "p", p: 12, op: S("#").map(() => collection => N("d_size", {collection}))})
-        .a({t: "i", p: 2, ass: "right", op: binDataOp("=>")})
-        .a({t: "i", p: 3, ass: "right", op: binDataOp("||")})
-        .a({t: "i", p: 4, ass: "right", op: binDataOp("&&")})
-        .a({t: "i", p: 5, ass: "left", op: binDataOp("==")})
-        .a({t: "i", p: 5, ass: "left", op: binDataOp("!=")})
-        .a({t: "i", p: 6, ass: "left", op: binDataOp("<=")})
-        .a({t: "i", p: 6, ass: "left", op: binDataOp("<")})
-        .a({t: "i", p: 6, ass: "left", op: binDataOp(">=")})
-        .a({t: "i", p: 6, ass: "left", op: binDataOp(">")})
-        .a({t: "i", p: 6, ass: "left", op: binDataOp("in")})
-        .a({t: "i", p: 7, ass: "right", op: binDataOp("|>")})
-        .a({t: "i", p: 8, ass: "left", op: binDataOp("<|")})
-        .a({t: "i", p: 9, ass: "left", op: binDataOp("++")})
-        .a({t: "i", p: 10, ass: "left", op: binDataOp("+")})
-        .a({t: "i", p: 10, ass: "left", op: binDataOp("-")})
-        .a({t: "i", p: 11, ass: "left", op: binDataOp("/")})
-        .a({t: "i", p: 11, ass: "left", op: binDataOp("div")})
-        .a({t: "i", p: 11, ass: "left", op: binDataOp("mod")})
-        .a({t: "i", p: 12, ass: "left", op: binDataOp("*")})
-        .a({t: "i", p: 12, ass: "left", op: binDataOp(".")})
-        .a({
-            t: "s",
-            p: 0,
-            op: P.seq(S("whr"), assignmentListParser, S("end")).map(
-                ([, vars]) =>
-                    expr =>
-                        N("d_where", {expr, vars})
-            ),
-        })
+// Data parser
+export const dataExprParser = P.lazy(() =>
+    createOpParser<IAnyNode>("dataExpr")
+        .a(Base({op: numberParser}))
+        .a(Base({p: 19, op: idParser}))
+        .a(Base({p: 20, op: Node("d:bool", Text("true").or(Text("false")))}))
+        .a(Base({p: 20, op: Node("d:list", Text("["), Opt(dataExprListParser), Text("]"))}))
+        .a(Base({p: 20, op: Node("d:set", Text("{"), Opt(dataExprListParser), Text("}"))}))
+        .a(Base({p: 20, op: Node("d:bag", Text("{"), Opt(bagEnumEltListParser), Text("}"))}))
+        .a(Base({p: 20, op: Node("d:setCompr", Text("{"), varDeclParser, Text("|"), dataExprRecParser, Text("}"))}))
+        .a(Base({p: 50, op: Node("d:group", Text("("), dataExprRecParser, Text(")"))}))
+        .a(Suf({p: 13, op: Node("d:map", Text("["), dataExprRecParser, Text("->"), dataExprRecParser, Text("]"))}))
+        .a(Suf({p: 13, op: Node("d:apply", Text("("), dataExprListParser, Text(")"))}))
+        .a(Pref({p: 12, op: Node("d:negate", Text("!"))}))
+        .a(Pref({p: 12, op: Node("d:negative", Text("-"))}))
+        .a(Pref({p: 12, op: Node("d:size", Text("#"))}))
+        .a(Pref({p: 1, op: Node("d:forall", varsDeclListParser, Text("."), dataExprRecParser)}))
+        .a(Pref({p: 1, op: Node("d:exists", varsDeclListParser, Text("."), dataExprRecParser)}))
+        .a(Pref({p: 1, op: Node("d:lambda", varsDeclListParser, Text("."), dataExprRecParser)}))
+        .a(Inf({p: 2, ass: "right", op: Node("d:implies", Text("=>"))}))
+        .a(Inf({p: 3, ass: "right", op: Node("d:or", Text("||"))}))
+        .a(Inf({p: 4, ass: "right", op: Node("d:and", Text("&&"))}))
+        .a(Inf({p: 5, ass: "left", op: Node("d:equals", Text("=="))}))
+        .a(Inf({p: 5, ass: "left", op: Node("d:notEquals", Text("!="))}))
+        .a(Inf({p: 6, ass: "left", op: Node("d:smallerEquals", Text("<="))}))
+        .a(Inf({p: 6, ass: "left", op: Node("d:smaller", Text("<"))}))
+        .a(Inf({p: 6, ass: "left", op: Node("d:biggerEquals", Text(">="))}))
+        .a(Inf({p: 6, ass: "left", op: Node("d:bigger", Text(">"))}))
+        .a(Inf({p: 6, ass: "left", op: Node("d:in", Text("in"))}))
+        .a(Inf({p: 7, ass: "right", op: Node("d:insert", Text("|>"))}))
+        .a(Inf({p: 8, ass: "left", op: Node("d:append", Text("<|"))}))
+        .a(Inf({p: 9, ass: "left", op: Node("d:concat", Text("++"))}))
+        .a(Inf({p: 10, ass: "left", op: Node("d:add", Text("+"))}))
+        .a(Inf({p: 10, ass: "left", op: Node("d:subtract", Text("-"))}))
+        .a(Inf({p: 11, ass: "left", op: Node("d:divide", Text("/"))}))
+        .a(Inf({p: 11, ass: "left", op: Node("d:div", Text("div"))}))
+        .a(Inf({p: 11, ass: "left", op: Node("d:mod", Text("mod"))}))
+        .a(Inf({p: 12, ass: "left", op: Node("d:multiply", Text("*"))}))
+        .a(Inf({p: 12, ass: "left", op: Node("d:index", Text("."))}))
+        .a(Suf({p: 0, op: Node("d:where", Text("whr"), assignmentListParser, Text("end"))}))
         .finish()
 );
+const dataExprRecParser = Rec(dataExprParser);
+const dataExprListParser = ListNode("d:dataExprList", dataExprRecParser);
+const bagEnumEltParser = Node("d:dataEnumElt", dataExprRecParser, Text(":"), dataExprRecParser);
+const bagEnumEltListParser = ListNode("d:bagEnumEltList", bagEnumEltParser);
+const idListParser = ListNode("d:idList", idParser);
+const varDeclParser = Node("d:varDecl", idParser, Text(":"), sortExprParser);
+const varsDeclParser = Node("d:varsDecl", idListParser, Text(":"), sortExprRecParser);
+const varsDeclListParser = ListNode("d:varsDeclList", varsDeclParser);
+const assignmentParser = Node("d:assignment", idParser, Text("="), dataExprRecParser);
+const assignmentListParser = ListNode("d:assignmentList", assignmentParser);
 
-// Actions
-const actionParser: Parser<IActionNode> = P.seq(idParser, Opt(P.seq(S("("), dataExprListParser, S(")")))).map(([{name}, data]) =>
-    N("a_action", {name, args: data?.[1] ?? []})
-);
-export const multiActParser: Parser<IMultAct> = S("tau")
-    .map(() => N("a_tau"))
-    .or(listParser(actionParser, S("|")).map(actions => N("a_list", {actions})));
+export type IDataExprNodes = TGetTypeOfParser<
+    | typeof dataExprParser
+    | typeof dataExprListParser
+    | typeof bagEnumEltParser
+    | typeof bagEnumEltListParser
+    | typeof idListParser
+    | typeof varDeclParser
+    | typeof varsDeclParser
+    | typeof varsDeclListParser
+    | typeof assignmentParser
+    | typeof assignmentListParser
+>;
 
-// Action formulas
+// Action parsers
+const actionParser = Node("a:action", idParser, Opt(Text("("), dataExprListParser, Text(")")));
+const actionListParser = ListNode("a:actions", actionParser, Text("|"));
+const tauParser = Node("a:tau", Text("tau"));
+const multActParser = Node("a:multAct", tauParser.or(actionListParser));
 
-const binFrmOp = <N extends string>(kind: N) =>
-    S(kind).map(() => (exprA: IActFrm, exprB: IActFrm) => N("f_binOp", {kind, exprA, exprB}));
-export const actFrmParser: Parser<IActFrm> = P.lazy(() =>
-    createOpParser<IActFrm>()
-        .a({t: "b", p: 30, op: multiActParser})
-        .a({t: "b", p: 50, op: P.seq(S("val"), S("("), dataExprParser, S(")")).map(([, , expr]) => expr)})
-        .a({t: "b", p: 50, op: P.seq(S("("), actFrmParser, S(")")).map(([, expr]) => N("f_group", {expr}))})
-        .a({t: "b", p: 40, op: S("true").map(() => N("f_bool", {val: true}))})
-        .a({t: "b", p: 40, op: S("false").map(() => N("f_bool", {val: false}))})
-        .a({
-            t: "p",
-            p: 21,
-            op: P.seq(S("forall"), listParser(varDeclr), S(".")).map(
-                ([, vars]) =>
-                    expr =>
-                        N("f_forall", {vars, expr})
-            ),
-        })
-        .a({
-            t: "p",
-            p: 21,
-            op: P.seq(S("exists"), listParser(varDeclr), S(".")).map(
-                ([, vars]) =>
-                    expr =>
-                        N("f_exists", {vars, expr})
-            ),
-        })
-        .a({t: "i", p: 22, ass: "right", op: binFrmOp("=>")})
-        .a({t: "i", p: 23, ass: "right", op: binFrmOp("||")})
-        .a({t: "i", p: 24, ass: "right", op: binFrmOp("&&")})
-        .a({
-            t: "s",
-            p: 25,
-            op: P.seq(S("@"), dataExprParser).map(
-                ([, time]) =>
-                    expr =>
-                        N("f_time", {time, expr})
-            ),
-        })
-        .a({t: "p", p: 26, op: S("!").map(() => expr => N("f_negate", {expr}))})
+export type IActionNodes = TGetTypeOfParser<
+    typeof actionParser | typeof actionListParser | typeof tauParser | typeof multActParser
+>;
+
+// Action formula parser
+export const actFrmParser = P.lazy(() =>
+    createOpParser<IAnyNode>("actFrm")
+        .a(Base({p: 50, op: Node("af:data", Text("val"), Text("("), dataExprParser, Text(")"))}))
+        .a(Base({p: 30, op: multActParser}))
+        .a(Base({p: 50, op: Node("af:group", Text("("), actFrmRecParser, Text(")"))}))
+        .a(Base({p: 40, op: Node("af:bool", Text("true").or(Text("false")))}))
+        .a(Pref({p: 21, op: Node("af:forall", Text("forall"), varsDeclListParser, Text("."))}))
+        .a(Pref({p: 21, op: Node("af:exists", Text("exists"), varsDeclListParser, Text("."))}))
+        .a(Inf({p: 22, op: Node("af:implies", Text("=>"))}))
+        .a(Inf({p: 23, op: Node("af:or", Text("||"))}))
+        .a(Inf({p: 24, op: Node("af:and", Text("&&"))}))
+        .a(Suf({p: 25, op: Node("af:time", Text("@"))}))
+        .a(Pref({p: 26, op: Node("af:negate", Text("!"))}))
         .finish()
 );
+const actFrmRecParser = Rec(actFrmParser);
 
-// Regular formula
-export const regFrmParser: Parser<IRegFrm> = P.lazy(() =>
-    createOpParser<IRegFrm>()
-        .a({t: "b", p: 50 /* 30 */, op: actFrmParser})
-        .a({t: "b", p: 50, op: P.seq(S("("), regFrmParser, S(")")).map(([, expr]) => N("rf_group", {expr}))})
-        .a({t: "i", p: 31, op: S("+").map(() => (exprA, exprB) => N("rf_opt", {exprA, exprB}))})
-        .a({t: "i", p: 32, op: S(".").map(() => (exprA, exprB) => N("rf_seq", {exprA, exprB}))})
-        .a({t: "s", p: 33, op: S("*").map(() => expr => N("rf_zeroOrMore", {expr}))})
-        .a({t: "s", p: 33, op: S("+").map(() => expr => N("rf_oneOrMore", {expr}))})
+export type IActFrmNodes = TGetTypeOfParser<typeof actFrmParser>;
+
+// Regular formula parser
+export const regFrmParser = P.lazy(() =>
+    createOpParser<IAnyNode>("regFrm")
+        .a(Base({p: 50 /* 30 */, op: actFrmParser}))
+        .a(Base({p: 50, op: Node("rf:group", Text("("), regFrmRecParser, Text(")"))}))
+        .a(Inf({p: 31, op: Node("rf:opt", Text("+"))}))
+        .a(Inf({p: 32, op: Node("rf:seq", Text("."))}))
+        .a(Suf({p: 33, op: Node("rf:zeroOrMore", Text("*"))}))
+        .a(Suf({p: 33, op: Node("rf:oneOrMore", Text("+"))}))
         .finish()
 );
+const regFrmRecParser = Rec(regFrmParser);
 
-// State formula
-const stateDeclParser: Parser<IStateVarDecl[]> = listParser(
-    P.seq(idParser, S(":"), sortExprParser, S("="), dataExprParser).map(([{name}, , sort, , init]) =>
-        N("sf_varDecl", {name, sort, init})
-    )
-);
+export type IRegFrmNodes = TGetTypeOfParser<typeof regFrmParser>;
 
-const binStateFrmOp = <N extends string>(kind: N) =>
-    S(kind).map(() => (exprA: IStateFrm, exprB: IStateFrm) => N("sf_binOp", {kind, exprA, exprB}));
-export const stateFrmParser: Parser<IStateFrm> = P.lazy(() =>
-    createOpParser<IStateFrm>()
-        .a({t: "b", p: 50, op: P.seq(S("val"), S("("), dataExprParser, S(")")).map(([, , expr]) => expr)})
-        .a({t: "b", p: 50, op: P.seq(S("("), stateFrmParser, S(")")).map(([, expr]) => N("sf_group", {expr}))})
-        .a({t: "b", p: 50, op: S("true").map(() => N("sf_bool", {val: true}))})
-        .a({t: "b", p: 50, op: S("false").map(() => N("sf_bool", {val: false}))})
-        .a({t: "b", p: 50, op: P.seq(S("delay"), S("@"), dataExprParser).map(([, , expr]) => N("sf_delay", {expr}))})
-        .a({t: "b", p: 50, op: P.seq(S("yaled"), S("@"), dataExprParser).map(([, , expr]) => N("sf_yaled", {expr}))})
-        .a({
-            t: "p",
-            p: 50, // 41,
-            op: P.seq(S("mu"), idParser, Opt(P.seq(S("("), stateDeclParser, S(")"))), S(".")).map(
-                ([, {name}, vars]) =>
-                    expr =>
-                        N("sf_mu", {name, vars: vars?.[1] ?? [], expr})
-            ),
-        })
-        .a({
-            t: "p",
-            p: 50, // 41,
-            op: P.seq(S("nu"), idParser, Opt(P.seq(S("("), stateDeclParser, S(")"))), S(".")).map(
-                ([, {name}, vars]) =>
-                    expr =>
-                        N("sf_nu", {name, vars: vars?.[1] ?? [], expr})
-            ),
-        })
-        .a({
-            t: "p",
-            p: 50, // 42,
-            op: P.seq(S("forall"), listParser(varDeclr), S(".")).map(
-                ([, vars]) =>
-                    expr =>
-                        N("sf_forall", {vars, expr})
-            ),
-        })
-        .a({
-            t: "p",
-            p: 50, // 42,
-            op: P.seq(S("exists"), listParser(varDeclr), S(".")).map(
-                ([, vars]) =>
-                    expr =>
-                        N("sf_exists", {vars, expr})
-            ),
-        })
-        .a({t: "i", p: 43, ass: "right", op: binStateFrmOp("=>")})
-        .a({t: "i", p: 44, ass: "right", op: binStateFrmOp("||")})
-        .a({t: "i", p: 45, ass: "right", op: binStateFrmOp("&&")})
-        .a({
-            t: "p",
-            p: 50, // 46,
-            op: P.seq(S("["), regFrmParser, S("]")).map(
-                ([, path]) =>
-                    expr =>
-                        N("sf_forallPaths", {path, expr})
-            ),
-        })
-        .a({
-            t: "p",
-            p: 50, // 46,
-            op: P.seq(S("<"), regFrmParser, S(">")).map(
-                ([, path]) =>
-                    expr =>
-                        N("sf_existsPath", {path, expr})
-            ),
-        })
-        .a({
-            t: "p",
-            p: 50, // 47,
-            op: S("!").map(() => expr => N("sf_negate", {expr})),
-        })
-        .a({
-            t: "b",
-            p: 50,
-            op: P.seq(idParser, Opt(P.seq(S("("), dataExprListParser, S(")")))).map(([{name}, data]) =>
-                N("sf_varInst", {name, args: data?.[1] ?? []})
-            ),
-        })
+// State formula parser
+export const stateFrmParser = P.lazy(() =>
+    createOpParser<IAnyNode>("stateFrm")
+        .a(Base({p: 50, op: Node("sf:data", Text("val"), Text("("), dataExprParser, Text(")"))}))
+        .a(Base({p: 50, op: Node("sf:group", Text("("), stateFrmRecParser, Text(")"))}))
+        .a(Base({p: 50, op: Node("sf:bool", Text("true").or(Text("false")))}))
+        .a(Base({p: 50, op: Node("sf:delay", Text("delay"), Opt(Text("@"), dataExprParser))}))
+        .a(Base({p: 50, op: Node("sf:yaled", Text("yaled"), Opt(Text("@"), dataExprParser))}))
+        .a(Pref({p: 50, op: Node("sf:mu", Text("mu"), stateVarDeclParser, Text("."))}))
+        .a(Pref({p: 50, op: Node("sf:nu", Text("nu"), stateVarDeclParser, Text("."))}))
+        .a(Pref({p: 50, op: Node("sf:forall", Text("forall"), varsDeclListParser, Text("."))}))
+        .a(Pref({p: 50, op: Node("sf:exists", Text("exists"), varsDeclListParser, Text("."))}))
+        .a(Inf({p: 43, ass: "right", op: Node("sf:implies", Text("=>"))}))
+        .a(Inf({p: 44, ass: "right", op: Node("sf:or", Text("||"))}))
+        .a(Inf({p: 45, ass: "right", op: Node("sf:and", Text("&&"))}))
+        .a(Pref({p: 50, op: Node("sf:forallPaths", Text("["), regFrmParser, Text("]"))}))
+        .a(Pref({p: 50, op: Node("sf:existsPath", Text("<"), regFrmParser, Text(">"))}))
+        .a(Pref({p: 50, op: Node("sf:negate", Text("!"))}))
+        .a(Base({p: 50, op: Node("sf:simpleData", idParser, Opt(Text("("), dataExprListParser, Text(")")))}))
         .finish()
 );
+const stateFrmRecParser = Rec(stateFrmParser);
+const stateVarAssignmentParser = Node("sf:stateVarAssignment", idParser, Text(":"), sortExprParser, Text("="), dataExprRecParser);
+const stateVarAssignmentListParser = ListNode("sf:stateVarAssignmentList", stateVarAssignmentParser);
+const stateVarDeclParser = Node("sf:stateVarDecl", idParser, Opt(Text("("), stateVarAssignmentListParser, Text(")")));
+
+export type IStateFrmNodes = TGetTypeOfParser<
+    typeof stateFrmParser | typeof stateVarAssignmentParser | typeof stateVarAssignmentListParser | typeof stateVarDeclParser
+>;
+
+export type IAllNodes = IStateFrmNodes | IRegFrmNodes | IActFrmNodes | IActionNodes | IDataExprNodes | ISortExprNodes;
