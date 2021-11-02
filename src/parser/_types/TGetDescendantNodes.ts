@@ -1,4 +1,4 @@
-import {IAnyNode, IListNode, INode} from "./INode";
+import {IAnyNode, INode} from "./INode";
 
 /**
  * Recursively extracts all descendants from a node.
@@ -11,19 +11,12 @@ export type TGetDescendantNodes<S extends IAnyNode> = TGetChildNodes<S> extends 
 /** Retrieves all child nodes from a given node */
 export type TGetChildNodes<S extends IAnyNode> = IAnyNode extends S
     ? never
-    :
-          | (S extends INode<string, infer C>
-                ? C extends infer K
-                    ? K extends any[]
-                        ? TGetNodesFromTuple<K>
-                        : never
-                    : never
-                : never)
-          | (S extends IListNode<string, infer C, infer D>
-                ?
-                      | (C extends IAnyNode ? (IAnyNode extends C ? never : TGetDescendantNodes<C>) : never)
-                      | (D extends IAnyNode ? (IAnyNode extends D ? never : TGetDescendantNodes<D>) : never)
-                : never);
+    : S extends INode<string, infer C> ? (C extends infer K ? (K extends any[] ? TGetNodesFromTuple<K> : never) : never) : never;
+//   | (S extends IListNode<string, infer C, infer D>
+//         ?
+//               | (C extends IAnyNode ? (IAnyNode extends C ? never : TGetDescendantNodes<C>) : never)
+//               | (D extends IAnyNode ? (IAnyNode extends D ? never : TGetDescendantNodes<D>) : never)
+//         : never);
 
 /** Extracts all (non-'IAnyNode') nodes from a tuple */
 export type TGetNodesFromTuple<T extends IAnyNode[]> = T extends [infer F, ...infer R]

@@ -8,8 +8,8 @@ import {TGetDescendantNodes} from "./_types/TGetDescendantNodes";
 // Lang spec: https://github.com/mCRL2org/mCRL2/blob/master/libraries/core/source/mcrl2_syntax.g
 
 // Base parsers
-const idParser = Node("id", Text(/[A-Za-z_][A-Za-z_0-9']*/));
-const numberParser = Node("number", Text(/0|([1-9][0-9]*)/));
+const idParser = Node("id", Text(/[A-Za-z_][A-Za-z_0-9']*/)).desc("identifier");
+const numberParser = Node("number", Text(/0|([1-9][0-9]*)/)).desc("number");
 
 // Sort parser
 export const sortExprParser = P.lazy(() =>
@@ -43,6 +43,7 @@ export type ISortExprNodes = TGetTypeOfParser<
     | typeof projDeclListParser
     | typeof constrDeclParser
     | typeof constrDeclListParser
+    | typeof idParser
 >;
 
 // Data parser
@@ -53,7 +54,7 @@ export const dataExprParser = P.lazy(() =>
         .a(Base({p: 20, op: Node("d:bool", Text("true").or(Text("false")))}))
         .a(Base({p: 20, op: Node("d:list", Text("["), Opt(dataExprListParser), Text("]"))}))
         .a(Base({p: 20, op: Node("d:set", Text("{"), Opt(dataExprListParser), Text("}"))}))
-        .a(Base({p: 20, op: Node("d:bag", Text("{"), Opt(bagEnumEltListParser), Text("}"))}))
+        .a(Base({p: 20, op: Node("d:bag", Text("{"), Opt(bagEnumEltListParser).or(Text(":")), Text("}"))}))
         .a(Base({p: 20, op: Node("d:setCompr", Text("{"), varDeclParser, Text("|"), dataExprRecParser, Text("}"))}))
         .a(Base({p: 50, op: Node("d:group", Text("("), dataExprRecParser, Text(")"))}))
         .a(Suf({p: 13, op: Node("d:map", Text("["), dataExprRecParser, Text("->"), dataExprRecParser, Text("]"))}))
@@ -61,9 +62,9 @@ export const dataExprParser = P.lazy(() =>
         .a(Pref({p: 12, op: Node("d:negate", Text("!"))}))
         .a(Pref({p: 12, op: Node("d:negative", Text("-"))}))
         .a(Pref({p: 12, op: Node("d:size", Text("#"))}))
-        .a(Pref({p: 1, op: Node("d:forall", varsDeclListParser, Text("."), dataExprRecParser)}))
-        .a(Pref({p: 1, op: Node("d:exists", varsDeclListParser, Text("."), dataExprRecParser)}))
-        .a(Pref({p: 1, op: Node("d:lambda", varsDeclListParser, Text("."), dataExprRecParser)}))
+        .a(Pref({p: 1, op: Node("d:forall", Text("forall"), varsDeclListParser, Text("."))}))
+        .a(Pref({p: 1, op: Node("d:exists", Text("exists"), varsDeclListParser, Text("."))}))
+        .a(Pref({p: 1, op: Node("d:lambda", Text("lambda"), varsDeclListParser, Text("."))}))
         .a(Inf({p: 2, ass: "right", op: Node("d:implies", Text("=>"))}))
         .a(Inf({p: 3, ass: "right", op: Node("d:or", Text("||"))}))
         .a(Inf({p: 4, ass: "right", op: Node("d:and", Text("&&"))}))
@@ -74,8 +75,8 @@ export const dataExprParser = P.lazy(() =>
         .a(Inf({p: 6, ass: "left", op: Node("d:biggerEquals", Text(">="))}))
         .a(Inf({p: 6, ass: "left", op: Node("d:bigger", Text(">"))}))
         .a(Inf({p: 6, ass: "left", op: Node("d:in", Text("in"))}))
-        .a(Inf({p: 7, ass: "right", op: Node("d:insert", Text("|>"))}))
-        .a(Inf({p: 8, ass: "left", op: Node("d:append", Text("<|"))}))
+        .a(Inf({p: 7, ass: "right", op: Node("d:cons", Text("|>"))}))
+        .a(Inf({p: 8, ass: "left", op: Node("d:snoc", Text("<|"))}))
         .a(Inf({p: 9, ass: "left", op: Node("d:concat", Text("++"))}))
         .a(Inf({p: 10, ass: "left", op: Node("d:add", Text("+"))}))
         .a(Inf({p: 10, ass: "left", op: Node("d:subtract", Text("-"))}))
@@ -89,7 +90,7 @@ export const dataExprParser = P.lazy(() =>
 );
 const dataExprRecParser = Rec(dataExprParser);
 const dataExprListParser = ListNode("d:dataExprList", dataExprRecParser);
-const bagEnumEltParser = Node("d:dataEnumElt", dataExprRecParser, Text(":"), dataExprRecParser);
+const bagEnumEltParser = Node("d:bagEnumElt", dataExprRecParser, Text(":"), dataExprRecParser);
 const bagEnumEltListParser = ListNode("d:bagEnumEltList", bagEnumEltParser);
 const idListParser = ListNode("d:idList", idParser);
 const varDeclParser = Node("d:varDecl", idParser, Text(":"), sortExprParser);
@@ -109,6 +110,7 @@ export type IDataExprNodes = TGetTypeOfParser<
     | typeof varsDeclListParser
     | typeof assignmentParser
     | typeof assignmentListParser
+    | typeof numberParser
 >;
 
 // Action parsers
@@ -133,7 +135,7 @@ export const actFrmParser = P.lazy(() =>
         .a(Inf({p: 22, op: Node("af:implies", Text("=>"))}))
         .a(Inf({p: 23, op: Node("af:or", Text("||"))}))
         .a(Inf({p: 24, op: Node("af:and", Text("&&"))}))
-        .a(Suf({p: 25, op: Node("af:time", Text("@"))}))
+        .a(Suf({p: 25, op: Node("af:time", Text("@"), dataExprParser)}))
         .a(Pref({p: 26, op: Node("af:negate", Text("!"))}))
         .finish()
 );
@@ -149,7 +151,7 @@ export const regFrmParser = P.lazy(() =>
         .a(Inf({p: 31, op: Node("rf:opt", Text("+"))}))
         .a(Inf({p: 32, op: Node("rf:seq", Text("."))}))
         .a(Suf({p: 33, op: Node("rf:zeroOrMore", Text("*"))}))
-        .a(Suf({p: 33, op: Node("rf:oneOrMore", Text("+"))}))
+        .a(Suf({p: 33, op: Node("rf:oneOrMore", Text("+").notFollowedBy(regFrmRecParser))}))
         .finish()
 );
 const regFrmRecParser = Rec(regFrmParser);

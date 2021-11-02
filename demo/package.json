@@ -25,9 +25,10 @@
     "homepage": "https://github.com/TarVK/mCRL2-formatter#readme",
     "dependencies": {
         "@fluentui/react": "^7.153.4",
+        "@fluentui/react-theme-provider": "^0.18.5",
         "@monaco-editor/react": "^4.2.2",
-        "SAT": "link:..",
         "color": "^3.1.3",
+        "mCRL2-formatter": "link:..",
         "monaco-editor": "^0.28.1",
         "react": "^17.0.1",
         "react-dom": "^17.0.1",

@@ -1,5 +1,5 @@
 import P, {Parser} from "parsimmon";
-import {IAnyNode, IListNode, INode, IText, ITextOrNode} from "./_types/INode";
+import {IAnyNode, INode, IText, ITextOrNode} from "./_types/INode";
 import {TGetTypeOfParsers} from "./_types/TGetTypeOfParsers";
 import {TFlattenTuple} from "./_types/TFlattenTuple";
 import {TMapTuple} from "./_types/TMapTuple";
@@ -73,9 +73,9 @@ export const ListNode = <N extends string, C extends ITextOrNode, D extends ITex
     name: N,
     nodeParser: Parser<C>,
     sep: Parser<D> = Text(",") as any
-): Parser<IListNode<N, C, D>> => {
-    const parser: Parser<IListNode<N, C, D>> = P.lazy(() => Node(name, nodeParser, Opt(sep, parser))) as any;
-    return parser;
+): Parser<INode<N, [C, ...([D, IAnyNode] | [null, null])]>> => {
+    const parser: Parser<IAnyNode> = P.lazy(() => Node(name, nodeParser, Opt(sep, parser))) as any;
+    return parser as any;
 };
 
 /**

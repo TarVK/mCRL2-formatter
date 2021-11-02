@@ -2,7 +2,7 @@ import {IAnyNode, INode} from "./INode";
 
 /** Obtains a node type from its name */
 export type TGetNodeByName<N extends T["type"], T extends IAnyNode> = T extends infer U
-    ? U extends INode<N, any[], boolean>
+    ? U extends INode<N, any[]>
         ? U
         : never
     : never;

@@ -4,6 +4,6 @@ export type ILatexFormattingConfig = {
     bracketMode?: "all" | "original" | "required";
     /** The maximum length of the line */
     maxLineLength?: number;
-    /** The level of indentation in front, must include unit. E.g. 2em */
+    /** The latex to use for indentation of text*/
     indent?: string;
 };
