@@ -1,7 +1,7 @@
 import {Range, editor as Editor} from "monaco-editor";
 import React, {FC, Fragment, Suspense, useCallback, useEffect, useRef, useState} from "react";
 import {useEditor} from "./editor/useEditor";
-import {Stack, StackItem, getTheme, Dropdown, PrimaryButton, ActionButton} from "@fluentui/react";
+import {Stack, StackItem, getTheme, Dropdown, PrimaryButton, ActionButton, Pivot, PivotItem} from "@fluentui/react";
 import {Header} from "./components/Header";
 import {Sidebar} from "./components/Sidebar";
 import {useTheme} from "@fluentui/react-theme-provider";
@@ -14,14 +14,12 @@ import {useErrorAnnotater} from "./editor/useErrorAnnotater";
 import {nodeToLatex, stateFrmParser} from "mCRL2-formatter";
 import {combineOptions} from "./utils/combineOptions";
 import {LatexOutput} from "./components/LatexOutput";
+import {CSTOutput} from "./components/CSTOutput";
 
 export const App: FC = () => {
     const theme = useTheme();
     const [editor, editorRef] = useEditor({
-        value: `\
-(Nat # Nat -> 
-    List((Nat # Nat -> Bool))) -> List(Bool)\
-        `,
+        value: `[a||b&&c++d](e || f)`,
         height: "100%",
         options: {
             minimap: {enabled: false},
@@ -41,6 +39,7 @@ export const App: FC = () => {
     });
 
     const [syntaxError, setSyntaxError] = useState<null | ISyntaxError>(null);
+    const [node, setNode] = useState<IAnyNode | null>(null);
 
     const getNode = useCallback(() => {
         const val = editorRef.current?.getValue();
@@ -49,8 +48,10 @@ export const App: FC = () => {
         const result = stateFrmParser.parse(val);
         if (result.status) {
             setSyntaxError(null);
+            setNode(result.value);
             return result.value;
         } else {
+            setNode(null);
             setSyntaxError({
                 ...result,
                 message: `Syntax error, expected ${combineOptions(result.expected)}`,
@@ -83,7 +84,7 @@ export const App: FC = () => {
                 <StackItem grow={1} style={{minHeight: 0}}>
                     <Stack horizontal styles={{root: {height: "100%"}}}>
                         <StackItem align="stretch" grow={1} shrink={1} styles={{root: {flexBasis: 0, minWidth: 0}}}>
-                            <Stack styles={{root: {height: "100%"}}}>
+                            <Stack styles={{root: {height: "100%", overflow: "hidden"}}}>
                                 <StackItem grow={1} style={{minHeight: 0, flexBasis: 0}}>
                                     {editor}
                                 </StackItem>
@@ -97,8 +98,34 @@ export const App: FC = () => {
                                         </div>
                                     )}
                                 </StackItem>
-                                <StackItem grow={1} style={{minHeight: 0, flexBasis: 0}}>
-                                    <LatexOutput latex={latex} />
+                                <StackItem
+                                    grow={1}
+                                    style={{
+                                        minHeight: 0,
+                                        flexBasis: 0,
+                                        boxShadow: theme.effects.elevation16,
+                                        zIndex: 50,
+                                        position: "relative",
+                                    }}>
+                                    <Pivot
+                                        aria-label="Result"
+                                        style={{display: "flex", flexDirection: "column", height: "100%"}}
+                                        styles={{
+                                            itemContainer: {
+                                                flexBasis: 0,
+                                                flexShrink: 1,
+                                                flexGrow: 1,
+                                                overflow: "hidden",
+                                                minHeight: 0,
+                                            },
+                                        }}>
+                                        <PivotItem headerText="Latex" itemKey="latex">
+                                            <LatexOutput latex={latex} />
+                                        </PivotItem>
+                                        <PivotItem headerText="CST" itemKey="cst">
+                                            <CSTOutput node={node} />
+                                        </PivotItem>
+                                    </Pivot>
                                 </StackItem>
                             </Stack>
                         </StackItem>

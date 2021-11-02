@@ -29,14 +29,17 @@ export const LatexOutput: FC<{latex: string | null}> = ({latex}) => {
     }, [latex]);
 
     return (
-        <Stack horizontal styles={{root: {height: "100%"}}}>
-            <StackItem grow={1} style={{minWidth: 0, flexBasis: 0}}>
-                {editor}
-            </StackItem>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" />
-            <StackItem grow={1} style={{padding: theme.spacing.m, minWidth: 0, flexBasis: 0, overflow: "auto"}}>
-                {latex && <Tex texContent={latex} />}
-            </StackItem>
-        </Stack>
+        <div style={{height: "100%", width: "100%"}}>
+            <Stack horizontal styles={{root: {height: "100%", width: "100%"}}}>
+                {/* <Stack horizontal styles={{root: {}}}> */}
+                <StackItem grow={1} style={{minWidth: 0, flexBasis: 0}}>
+                    {editor}
+                </StackItem>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" />
+                <StackItem grow={1} style={{padding: theme.spacing.m, minWidth: 0, flexBasis: 0, overflow: "auto"}}>
+                    {latex && <Tex texContent={latex} />}
+                </StackItem>
+            </Stack>
+        </div>
     );
 };

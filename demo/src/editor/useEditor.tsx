@@ -38,16 +38,19 @@ export const useEditor = ({
     const {editorStyle} = useStyle();
 
     useEffect(() => {
+        if (!monaco) return;
         if (elementRef.current) {
-            const e = (editorRef.current = editor.create(elementRef.current, {
-                value: value,
-                language: mCRL2Language,
-                theme: mCRL2Theme,
-                folding: true,
-                foldingStrategy: "auto",
-                // showFoldingControls: "always",
-                ...options,
-            }));
+            const e = (editorRef.current =
+                // This is an ugly fix, can't get local monaco to work with standard languages, and can't get cdn monaco (monaco.editor) to work with custom languages
+                (options.language && options.language != "mCRL2Language" ? monaco.editor : editor).create(elementRef.current, {
+                    value: value,
+                    language: mCRL2Language,
+                    theme: mCRL2Theme,
+                    folding: true,
+                    foldingStrategy: "auto",
+                    // showFoldingControls: "always",
+                    ...options,
+                }));
 
             const resizeListener = () => e.layout();
             window.addEventListener("resize", resizeListener);

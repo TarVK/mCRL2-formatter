@@ -127,7 +127,7 @@ export type IActionNodes = TGetTypeOfParser<
 export const actFrmParser = P.lazy(() =>
     createOpParser<IAnyNode>("actFrm")
         .a(Base({p: 50, op: Node("af:data", Text("val"), Text("("), dataExprParser, Text(")"))}))
-        .a(Base({p: 30, op: multActParser}))
+        .a(Base({p: 50, op: multActParser}))
         .a(Base({p: 50, op: Node("af:group", Text("("), actFrmRecParser, Text(")"))}))
         .a(Base({p: 40, op: Node("af:bool", Text("true").or(Text("false")))}))
         .a(Pref({p: 21, op: Node("af:forall", Text("forall"), varsDeclListParser, Text("."))}))

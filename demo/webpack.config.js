@@ -28,6 +28,7 @@ module.exports = env => ({
         extensions: [".tsx", ".ts", ".js"],
     },
     output: {
+        globalObject: "self",
         filename: "bundle.js",
         path: build,
     },
