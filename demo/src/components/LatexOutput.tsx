@@ -1,5 +1,5 @@
 import React, {FC, useEffect} from "react";
-import {Stack, StackItem, getTheme, Dropdown, PrimaryButton} from "@fluentui/react";
+import {Stack, StackItem, getTheme, Dropdown, VerticalDivider} from "@fluentui/react";
 import {useEditor} from "../editor/useEditor";
 import {Tex} from "react-tex";
 import {useTheme} from "@fluentui/react-theme-provider";
@@ -23,7 +23,7 @@ export const LatexOutput: FC<{latex: string | null}> = ({latex}) => {
         if (!latex) {
             editor.setValue("");
         } else {
-            editor.setValue(latex);
+            editor.setValue("$\n" + latex + "\n$");
             editor.layout();
         }
     }, [latex]);
@@ -35,8 +35,11 @@ export const LatexOutput: FC<{latex: string | null}> = ({latex}) => {
                 <StackItem grow={1} style={{minWidth: 0, flexBasis: 0}}>
                     {editor}
                 </StackItem>
+                <StackItem style={{padding: theme.spacing.m}}>
+                    <VerticalDivider />
+                </StackItem>
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" />
-                <StackItem grow={1} style={{padding: theme.spacing.m, minWidth: 0, flexBasis: 0, overflow: "auto"}}>
+                <StackItem grow={1} style={{minWidth: 0, flexBasis: 0, overflow: "auto"}}>
                     {latex && <Tex texContent={latex} />}
                 </StackItem>
             </Stack>

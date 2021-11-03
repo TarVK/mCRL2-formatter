@@ -5,7 +5,6 @@ import {Stack, StackItem, getTheme, Dropdown, PrimaryButton, ActionButton, Pivot
 import {Header} from "./components/Header";
 import {Sidebar} from "./components/Sidebar";
 import {useTheme} from "@fluentui/react-theme-provider";
-import {IFormatOptions} from "./_types/IFormatOptions";
 import {ILatexOptions} from "./_types/ILatexOptions";
 import {useAnnotationRemover} from "./editor/useAnnotationRemove";
 import {IAnyNode} from "mCRL2-formatter/build/parser/_types/INode";
@@ -15,6 +14,7 @@ import {nodeToLatex, stateFrmParser} from "mCRL2-formatter";
 import {combineOptions} from "./utils/combineOptions";
 import {LatexOutput} from "./components/LatexOutput";
 import {CSTOutput} from "./components/CSTOutput";
+import {ContributionModal} from "./components/ContributionModal";
 
 export const App: FC = () => {
     const theme = useTheme();
@@ -27,17 +27,11 @@ export const App: FC = () => {
             scrollBeyondLastLine: false,
         },
     });
-    const formatOptions = useRef<IFormatOptions>({
-        brackets: "required",
-        maxLineLength: 150,
-        resetLineBreaks: true,
-        inputIndents: 4,
-        outputIndents: 4,
-    });
     const latexOptions = useRef<ILatexOptions>({
+        inputIndent: 4,
         tabCharacter: "\\text{\\hspace{2em}}",
     });
-
+    const [contributionVisible, setContributionVisible] = useState(false);
     const [syntaxError, setSyntaxError] = useState<null | ISyntaxError>(null);
     const [node, setNode] = useState<IAnyNode | null>(null);
 
@@ -58,14 +52,16 @@ export const App: FC = () => {
             });
         }
     }, [editorRef]);
-
     const [latex, setLatex] = useState<string | null>(null);
     const toLatex = useCallback(() => {
         const node = getNode();
         if (!node) {
             setLatex(null);
         } else {
-            const latex = nodeToLatex(node as any, {indent: latexOptions.current.tabCharacter});
+            const latex = nodeToLatex(node as any, {
+                inputIndent: latexOptions.current.inputIndent,
+                outputIndent: latexOptions.current.tabCharacter,
+            });
             setLatex(latex);
         }
     }, [editorRef]);
@@ -78,6 +74,7 @@ export const App: FC = () => {
     return (
         <div>
             <Stack styles={{root: {height: "100%", overflow: "hidden"}}}>
+                <ContributionModal visible={contributionVisible} onClose={() => setContributionVisible(false)} />
                 <StackItem>
                     <Header></Header>
                 </StackItem>
@@ -92,7 +89,9 @@ export const App: FC = () => {
                                     {syntaxError && (
                                         <div style={{padding: theme.spacing.m}}>
                                             <span style={{color: "rgb(175 20 20)"}}>{syntaxError.message}</span>
-                                            <ActionButton style={{marginLeft: theme.spacing.m, opacity: 0.5}}>
+                                            <ActionButton
+                                                onClick={() => setContributionVisible(true)}
+                                                style={{marginLeft: theme.spacing.m, opacity: 0.5}}>
                                                 Input is correct?
                                             </ActionButton>
                                         </div>
@@ -137,12 +136,7 @@ export const App: FC = () => {
                                 paddingRight: theme.spacing.s1,
                                 zIndex: 100,
                             }}>
-                            <Sidebar
-                                onFormat={() => {}}
-                                onToLatex={toLatex}
-                                formatOptions={formatOptions}
-                                latexOptions={latexOptions}
-                            />
+                            <Sidebar onToLatex={toLatex} latexOptions={latexOptions} />
                         </StackItem>
                     </Stack>
                 </StackItem>

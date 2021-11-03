@@ -11,23 +11,16 @@ import {ILatexFormattingConfig} from "./_types/ILatexFormatterConfig";
 export const nodeToLatex = (node: IAllNodes, config?: ILatexFormattingConfig) => format(node, {...config});
 
 const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConfig, string[]>(
-    (result, parent, {indent = "\\text{\\hspace{2em}}"}) => {
+    (result, parent, {outputIndent: indent = defIndent, inputIndent = 4}) => {
         const original = parent.children;
         if (result.length != original.length)
             throw new Error(`Result of type ${parent.type} had unexpected shape: ${JSON.stringify(result)}`);
 
         // Add latex whitespaces in output
         const tab = indent;
-        const prefix = (text: string) =>
-            text
-                .match(/^\s*/)![0]
-                .replace(/\t|    /g, tab)
-                .replace(/\n/g, "\\\\\n");
-        const suffix = (text: string) =>
-            text
-                .match(/\s*$/)![0]
-                .replace(/\t|    /g, tab)
-                .replace(/\n/g, "\\\\\n");
+        const indentRegex = RegExp(`\\t|[ ]{${inputIndent}}`, "g");
+        const prefix = (text: string) => text.match(/^\s*/)![0].replace(indentRegex, tab).replace(/\r?\n/g, "\\\\\n");
+        const suffix = (text: string) => text.match(/\s*$/)![0].replace(indentRegex, tab).replace(/\r?\n/g, "\\\\\n");
         const withWhiteSpaces = result.map((val, i) => {
             const or = original[i];
             const orVal = or && "text" in or && or.text;
@@ -115,7 +108,7 @@ const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConf
         "af:or": ([exprA, or, exprB]) => [exprA, "\\cup", exprB],
         "af:and": ([exprA, and, exprB]) => [exprA, "\\cap", exprB],
         "af:time": ([exprA, time, exprB]) => [exprA, "@", exprB],
-        "af:negate": ([neg, expr]) => ["\\overline{", `${expr}}`],
+        "af:negate": ([neg, expr], config) => ["\\overline{", `${replaceNewLines(expr, config, feed => `}${feed}\\overline{`)}}`], // overline doesn't automatically cross lines, so we manually stop overline and restart it on the next line
         "rf:group": ([l, expr, r]) => ["(", expr, ")"],
         "rf:opt": ([exprA, opt, exprB]) => [exprA, "+", exprB],
         "rf:seq": ([exprA, seq, exprB]) => [exprA, "\\cdot", exprB],
@@ -142,3 +135,31 @@ const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConf
         "sf:stateVarDecl": ([id, l, vars, r]) => [id, l ? "(" : "", vars ?? "", r ? ")" : ""],
     }
 );
+
+const defIndent = "\\text{\\hspace{2em}}";
+/**
+ * Replaces any new lines and starting indents using the given expression
+ * @param string The text in which to replace the newlines and tabs
+ * @param config The config to use for detecting newlines
+ * @param replace The function to perform the replacement
+ * @returns The string with everything replaced
+ */
+const replaceNewLines = (
+    string: string,
+    {outputIndent = defIndent}: ILatexFormattingConfig = {},
+    replace: (text: string) => string
+) => {
+    const slash = "\\\\"; // Literal slash in text
+    const regex = RegExp(`${slash}${slash}\\r?\\n(\\s*${escapeRegExp(outputIndent)})*\\s*`, "g");
+    console.log(regex);
+    return string.replace(regex, replace);
+};
+
+/**
+ * Escapes a string to be usable in regex as a literal matcher, src: https://stackoverflow.com/a/6969486/8521718
+ * @param string The string to escape
+ * @returns The escaped string
+ */
+function escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+}
