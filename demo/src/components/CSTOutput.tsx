@@ -47,7 +47,7 @@ export const CSTOutput: FC<{node: IAnyNode | null}> = ({node}) => {
                     {node && (
                         <ReactJson
                             src={node}
-                            name={"solution"}
+                            name={"root"}
                             collapsed={true}
                             displayDataTypes={false}
                             quotesOnKeys={false}
