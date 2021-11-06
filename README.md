@@ -14,3 +14,53 @@ The most important parts of the code are:
 This repository also contains a demo website from which the tool can be used without installing anything. This page can be found at: [tarvk.github.io/mCRL2-formatter/demo/build/](https://tarvk.github.io/mCRL2-formatter/demo/build/)
 
 ![Screenshot](./screenshot.png)
+
+## Contributing
+
+Not all parts of the code have been tested extensively, and I don't know the best practices for latex formatting, so any bug reports or PRs are welcome.
+
+### Building the formatter
+
+This project requires npm and node.js to be installed.
+
+Then to install all dependencies required for the formatter, from the root directory run:
+
+```
+npm install
+```
+
+Then you can either build once using:
+
+```
+npm run build
+```
+
+Or continuously build (which updates as soon as the code changes) using:
+
+```
+npm run dev
+```
+
+Note that building is rather slow, since I tried some meta programming in this project, such that node types are automatically inferred. But it does seem like this slows TS down significantly, so this was probably a bad idea.
+
+### Building the website
+
+You will need npm and node.js, as well as having build the formatter.
+
+Then to install all dependencies for the site, from the `demo` directory run:
+
+```
+npm install
+```
+
+Then you can either build once for production using:
+
+```
+npm run build
+```
+
+Or continuously build the site - and have it hosted on localhost:3000 while auto refreshing the page on changes - using:
+
+```
+npm run start
+```

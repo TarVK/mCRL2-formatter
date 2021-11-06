@@ -8,7 +8,11 @@ import {ILatexFormattingConfig} from "./_types/ILatexFormatterConfig";
  * @param config Additional configuration
  * @returns The latex string
  */
-export const nodeToLatex = (node: IAllNodes, config?: ILatexFormattingConfig) => format(node, {...config});
+export const nodeToLatex = (node: IAllNodes, config?: ILatexFormattingConfig) => lineOpen + format(node, {...config}) + lineClose;
+
+const lineOpen = "$\\mathit{";
+const lineClose = "}$";
+const newLine = lineClose + "\\\\\n" + lineOpen;
 
 const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConfig, string[]>(
     (result, parent, {outputIndent: indent = defIndent, inputIndent = 4}) => {
@@ -19,8 +23,8 @@ const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConf
         // Add latex whitespaces in output
         const tab = indent;
         const indentRegex = RegExp(`\\t|[ ]{${inputIndent}}`, "g");
-        const prefix = (text: string) => text.match(/^\s*/)![0].replace(indentRegex, tab).replace(/\r?\n/g, "\\\\\n");
-        const suffix = (text: string) => text.match(/\s*$/)![0].replace(indentRegex, tab).replace(/\r?\n/g, "\\\\\n");
+        const prefix = (text: string) => text.match(/^\s*/)![0].replace(indentRegex, tab).replace(/\r?\n/g, newLine);
+        const suffix = (text: string) => text.match(/\s*$/)![0].replace(indentRegex, tab).replace(/\r?\n/g, newLine);
         const withWhiteSpaces = result.map((val, i) => {
             const or = original[i];
             const orVal = or && "text" in or && or.text;
@@ -31,13 +35,13 @@ const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConf
         return withWhiteSpaces.join("");
     },
     {
-        id: ([lit]) => [` ${lit.text.trim()}`],
+        id: ([lit]) => [` ${lit.text.trim().replace(/_/g, "\\_")}`],
         number: ([lit]) => [` ${lit.text.trim()}`],
-        "s:bool": ([lit]) => [" Bool"],
-        "s:pos": ([lit]) => [" Pos"],
-        "s:nat": ([lit]) => [" Nat"],
-        "s:int": ([lit]) => [" Int"],
-        "s:real": ([lit]) => [" Real"],
+        "s:bool": ([lit]) => ["\\mathbb{B}"],
+        "s:pos": ([lit]) => ["\\mathbb{N}^{+}"],
+        "s:nat": ([lit]) => ["\\mathbb{N}"],
+        "s:int": ([lit]) => ["\\mathbb{Z}"],
+        "s:real": ([lit]) => ["\\mathbb{R}"],
         "s:list": ([lit, l, sort, r]) => [" List", "(", sort, ")"],
         "s:set": ([lit, l, sort, r]) => [" Set", "(", sort, ")"],
         "s:bag": ([lit, l, sort, r]) => [" Bag", "(", sort, ")"],
@@ -130,13 +134,15 @@ const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConf
         "sf:existsPath": ([l, path, r, expr]) => ["\\langle", path, "\\rangle", expr],
         "sf:negate": ([not, expr]) => ["\\neg", expr],
         "sf:simpleData": ([id, l, exprList, r]) => [id, l ? "(" : "", exprList ?? "", r ? ")" : ""],
-        "sf:stateVarAssignment": ([id, sep, sort, equals, val]) => [id, ":", sort, "=", val],
+        "sf:stateVarAssignment": ([id, sep, sort, equals, val]) => [id, ":", sort, "\\coloneqq", val],
         "sf:stateVarAssignmentList": ([element, sep, elements]) => [element, sep ? "," : "", elements ?? ""],
         "sf:stateVarDecl": ([id, l, vars, r]) => [id, l ? "(" : "", vars ?? "", r ? ")" : ""],
     }
 );
 
 const defIndent = "\\text{\\hspace{2em}}";
+
+// TODO: This is this whole `replaceNewLines` is rather hack, so in the future the recursion and preprocessing of the child content might need to be rethought.
 /**
  * Replaces any new lines and starting indents using the given expression
  * @param string The text in which to replace the newlines and tabs
@@ -149,9 +155,7 @@ const replaceNewLines = (
     {outputIndent = defIndent}: ILatexFormattingConfig = {},
     replace: (text: string) => string
 ) => {
-    const slash = "\\\\"; // Literal slash in text
-    const regex = RegExp(`${slash}${slash}\\r?\\n(\\s*${escapeRegExp(outputIndent)})*\\s*`, "g");
-    console.log(regex);
+    const regex = RegExp(`${escapeRegExp(newLine)}(\\s*${escapeRegExp(outputIndent)})*\\s*`, "g");
     return string.replace(regex, replace);
 };
 

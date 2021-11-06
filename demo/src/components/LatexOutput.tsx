@@ -23,7 +23,7 @@ export const LatexOutput: FC<{latex: string | null}> = ({latex}) => {
         if (!latex) {
             editor.setValue("");
         } else {
-            editor.setValue("$\n" + latex + "\n$");
+            editor.setValue(latex);
             editor.layout();
         }
     }, [latex]);
@@ -40,7 +40,7 @@ export const LatexOutput: FC<{latex: string | null}> = ({latex}) => {
                 </StackItem>
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" />
                 <StackItem grow={1} style={{minWidth: 0, flexBasis: 0, overflow: "auto"}}>
-                    {latex && <Tex texContent={latex} />}
+                    {latex && <Tex texContent={latex.replace(/\$/g, "")} />}
                 </StackItem>
             </Stack>
         </div>
