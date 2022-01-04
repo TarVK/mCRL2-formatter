@@ -8,11 +8,16 @@ import {ILatexFormattingConfig} from "./_types/ILatexFormatterConfig";
  * @param config Additional configuration
  * @returns The latex string
  */
-export const nodeToLatex = (node: IAllNodes, config?: ILatexFormattingConfig) => lineOpen + format(node, {...config}) + lineClose;
+export const nodeToLatex = (node: IAllNodes, config?: ILatexFormattingConfig) => `\
+\\begin{equation}
+    \\begin{split}
+        ${lineOpen + format(node, {...config}) + lineClose}
+    \\end{split}
+\\end{equation}`;
 
-const lineOpen = "$\\mathit{";
-const lineClose = "}$";
-const newLine = lineClose + "\\\\\n" + lineOpen;
+const lineOpen = "& \\mathit{";
+const lineClose = "}";
+const newLine = lineClose + "\\\\\n        " + lineOpen;
 
 const format = createRecursiveNodeMapper<IAllNodes, string, ILatexFormattingConfig, string[]>(
     (result, parent, {outputIndent: indent = defIndent, inputIndent = 4}) => {

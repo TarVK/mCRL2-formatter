@@ -1,4 +1,4 @@
-import React, {FC, useEffect} from "react";
+import React, {FC, useEffect, useMemo} from "react";
 import {Stack, StackItem, getTheme, Dropdown, VerticalDivider} from "@fluentui/react";
 import {useEditor} from "../editor/useEditor";
 import {Tex} from "react-tex";
@@ -27,6 +27,15 @@ export const LatexOutput: FC<{latex: string | null}> = ({latex}) => {
             editor.layout();
         }
     }, [latex]);
+    const inlineLatex = useMemo(() => {
+        if (!latex) return null;
+
+        const start = latex.match(/split\}/m);
+        const end = latex.match(/\\end\{split/m);
+        if (start?.index == undefined || end?.index == undefined) return latex; // Shouldn't happen
+
+        return latex.substring(start.index + start[0].length, end.index).replace(/&/gm, "");
+    }, [latex]);
 
     return (
         <div style={{height: "100%", width: "100%"}}>
@@ -40,7 +49,7 @@ export const LatexOutput: FC<{latex: string | null}> = ({latex}) => {
                 </StackItem>
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" />
                 <StackItem grow={1} style={{minWidth: 0, flexBasis: 0, overflow: "auto"}}>
-                    {latex && <Tex texContent={latex.replace(/\$/g, "")} />}
+                    {inlineLatex && <Tex texContent={inlineLatex} />}
                 </StackItem>
             </Stack>
         </div>

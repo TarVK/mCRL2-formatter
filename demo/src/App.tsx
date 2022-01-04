@@ -1,4 +1,3 @@
-import {Range, editor as Editor} from "monaco-editor";
 import React, {FC, Fragment, Suspense, useCallback, useEffect, useRef, useState} from "react";
 import {useEditor} from "./editor/useEditor";
 import {Stack, StackItem, getTheme, Dropdown, PrimaryButton, ActionButton, Pivot, PivotItem} from "@fluentui/react";
@@ -19,7 +18,7 @@ import {ContributionModal} from "./components/ContributionModal";
 export const App: FC = () => {
     const theme = useTheme();
     const [editor, editorRef] = useEditor({
-        value: `[a||b&&c++d](e || f)`,
+        value: `[a||b&&c++d](\n    e || f\n)`,
         height: "100%",
         options: {
             minimap: {enabled: false},
